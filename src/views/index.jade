@@ -87,7 +87,10 @@ block content
               i.icon-bulb
               span.small-title uptime
               span.small-value {{ upTimeTotal | upTimeFilter }}
-          div.col-xs-2.stat-holder.box
+          a.col-xs-2.stat-holder.box(data-toggle="tooltip", data-placement="top", title="Click to enlarge map", ng-click="showLargeMap()")
+            div.large-map.text-info
+              i.icon-network
+              span.small-title large map
 
         div.row
           div.col-xs-8
@@ -244,3 +247,14 @@ block content
               nodepropagchart(data="{{node.history.join(',')}}")
             td(class="{{ node.stats | propagationNodeAvgTimeClass : bestBlock }}") {{ node.stats | blockPropagationAvgFilter : bestBlock }}
             td(class="{{ node.stats.uptime | upTimeClass : node.stats.active }}") {{ node.stats.uptime | upTimeFilter }}
+
+    .modal.fade#large-map
+      .modal-dialog(style='width: 840px')
+        .modal-content
+          .modal-header
+            h4.modal-title Node Globe
+            button.close(type='button', aria-label='Close', data-dismiss='modal')
+              span(aria-hidden='true') &times;
+          .modal-body#largeMapBody(style='min-height: 800px')
+          largemap#largeMapHolder(data="map")
+            

@@ -92,6 +92,10 @@ netStatsApp.controller('StatsCtrl', function($scope, $filter, $localStorage, soc
 		$localStorage.pinned = $scope.pinned;
 	}
 
+	$scope.showLargeMap = function(){
+		$('#large-map').modal('show');
+	}
+
 	var timeout = setInterval(function ()
 	{
 		$scope.$apply();
@@ -490,6 +494,8 @@ netStatsApp.controller('StatsCtrl', function($scope, $filter, $localStorage, soc
 			return total + node.stats.uptime;
 		}, 0) / $scope.nodes.length;
 
+		// console.log($scope.nodes);
+
 		$scope.map = _.map($scope.nodes, function (node) {
 			var fill = $filter('bubbleClass')(node.stats, $scope.bestBlock);
 
@@ -501,6 +507,9 @@ netStatsApp.controller('StatsCtrl', function($scope, $filter, $localStorage, soc
 					nodeName: node.info.name,
 					fillClass: "text-" + fill,
 					fillKey: fill,
+					blockNumber: node.stats.block.number,
+					blockPropagation: node.stats.block.propagation,
+					avgPropagation: node.stats.propagationAvg,
 				};
 			else
 				return {
@@ -566,6 +575,10 @@ netStatsApp.controller('StatsCtrl', function($scope, $filter, $localStorage, soc
 				$scope.bestStats = _.max($scope.nodes, function (node) {
 					return parseInt(node.stats.block.number);
 				}).stats;
+				$scope.bestNode = _.max($scope.nodes, function (node) {
+					return parseInt(node.stats.block.number);
+				}).info;
+				console.log('best node: '+$scope.bestNode.name);
 
 				$scope.lastBlock = $scope.bestStats.block.arrived;
 				$scope.lastDifficulty = $scope.bestStats.block.difficulty;

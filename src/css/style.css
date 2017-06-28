@@ -17,6 +17,10 @@ table td {
 	-moz-osx-font-smoothing: auto;
 }
 
+.globe-modal {
+	background: #708090;
+}
+
 .propagationBox {
 	position: relative;
 	width: 8px;

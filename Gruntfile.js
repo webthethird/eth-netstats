@@ -17,13 +17,19 @@ var vendor = [
 	'dist/js/lib/lodash.min.js',
 	'dist/js/lib/d3.min.js',
 	'dist/js/lib/d3.tip.min.js',
+	'dist/js/lib/d3-geo.min.js',
+	'dist/js/lib/d3-array.min.js',
 	'dist/js/lib/topojson.min.js',
 	'dist/js/lib/datamaps.min.js',
 	'dist/js/lib/moment.min.js',
 	'dist/js/lib/moment.en.min.js',
 	'dist/js/lib/toastr.min.js',
 	'dist/js/lib/jquery.sparkline.min.js',
-	'dist/js/lib/primus.min.js'
+	'dist/js/lib/primus.min.js',
+	'dist/lib/globe/third-party/three.min.js',
+	'dist/lib/globe/third-party/Tween.js',
+	'dist/lib/globe/third-party/Detector.js',
+	'dist/lib/globe/globe.js'
 ];
 
 var styles = [
