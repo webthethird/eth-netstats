@@ -313,15 +313,16 @@ angular.module('netStatsApp.directives', [])
 				};
 				var arcConfig = {
 	        greatArc: true,
+					strokeWidth: 2,
 	        animationSpeed: 100
 	      };
 
+				var color = d3.scale.linear()
+			    .domain([0, 500, 1000, 1500])
+			    .range(["green", "yellow", "orange", "red"]);
+
 				var globalRotation = [97,-30];
 				var center;
-
-				var voronoi = d3.geom.voronoi()
-						.x('latitude')
-						.y('longitude');
 
 				function dynamicSort(property) {
 				    var sortOrder = 1;
@@ -335,14 +336,13 @@ angular.module('netStatsApp.directives', [])
 				    }
 				}
 
-				scope.links = [];
 				scope.arcs = [];
 				scope.bestBlock = 0;
 
 				scope.redraw = function() {
 				  d3.select("#largeMapBody").html('');
 				  scope.init();
-				}// redraw
+				}
 
 				scope.rotate = function(lat,lng) {
 					globalRotation = [0-lng,0-lat];
@@ -352,48 +352,44 @@ angular.module('netStatsApp.directives', [])
 
 				scope.drawArcs = function() {
 					scope.arcs = [];
-					// console.log(scope.links.length + ' links:', scope.links);
-					// scope.map.arc(scope.arcs, arcConfig);
-					scope.ordered = _.sortBy(scope.data, 'blockNumber');
-					scope.ordered.forEach(function(a, i){
-						// console.log(a.nodeName);
-						var links = _.filter(scope.links, function(link){
-							return link.source.nodeName == a.nodeName || link.target.nodeName == a.nodeName;
-						})
-						// console.log('links to '+a.nodeName, links);
-						links.forEach(function(l){
-							if(l.source.nodeName == a.nodeName) {
-								var b = l.target;
-							} else if(l.target.nodeName == a.nodeName) {
-								var b = l.source;
-							}
-							if(a.blockNumber == b.blockNumber && a.blockPropagation <= b.blockPropagation) {
-								var arc = {
-									origin: a,
-									destination: b
-								};
-								console.log(arc);
-								scope.arcs.push(arc);
-							}
-						})
-						// var b = scope.ordered[i+1];
-						// if(b == undefined) return;
-						// if(a.blockNumber == b.blockNumber && a.blockPropagation >= b.blockPropagation) {
-						// 	var arc = {
-						// 		origin: a,
-						// 		destination: b
-						// 	};
-						// 	scope.arcs.push(arc);
-						// }
+					// sort node list according to current block propagation time
+					scope.ordered = _.sortBy(scope.data, function (node) {
+						return parseInt(node.blockPropagation+1);
 					});
-					// scope.map.arc(scope.arcs, arcConfig);
+					// filter node list for only the best block
+					scope.ordered = _.filter(scope.ordered, function (node) {
+						return node.blockNumber == scope.bestBlock;
+					});
+					console.log("Ordered Nodes:",scope.ordered);
+					// for each node, search all previous nodes for the closest and create an arc
+					scope.ordered.forEach(function(node, index, data){
+						var prevNodes = data.slice(0, index);
+						if(prevNodes.length > 0){
+							var sortedNodes = _.sortBy(prevNodes, function(prevNode){
+								return d3.geo.distance([node.longitude, node.latitude],[prevNode.longitude, prevNode.latitude]);
+							})
+							var closest = sortedNodes[0];		// this is the closest node that has already propagated the current block
+							var arc = {
+								origin: closest,
+								destination: node,
+								time: node.blockPropagation,	// the time when this node propagated the block
+								delta: node.blockPropagation - closest.blockPropagation	// the time difference between when this node propagated the block and when its neighbor did
+							}
+							scope.arcs.push(arc);
+						}
+					});
 					addArcs(1);
 				}
 
 				function addArcs(index) {
-						console.log('adding arc: '+index)
-		        scope.map.arc( scope.arcs.slice(0, index) , {strokeWidth: 2});
-		        if ( index < scope.arcs.length ) {
+						// console.log('adding arc: '+index)
+						var arc = scope.arcs[index-1];
+						if(arc == undefined) return;
+						arcConfig.animationSpeed = arc.delta;
+						arcConfig.strokeColor = color(arc.time);
+						console.log('Arc #'+index+' origin: '+arc.origin.nodeName+' destination: '+arc.destination.nodeName+' time: ',arc.time)
+		        scope.map.arc( scope.arcs.slice(0, index) , arcConfig);
+		        if ( index < scope.arcs.length ) { // iterate through arcs every 100ms
 		            window.setTimeout(function() {
 		                addArcs(++index)
 		            }, 100);
@@ -409,18 +405,12 @@ angular.module('netStatsApp.directives', [])
 						height = 800;
 
 					scope.map = new Datamap({
-						// element: element[0],
 						element: document.getElementById('largeMapBody'),
 						scope: 'world',
-						// projection: 'orthographic',
-						// projectionConfig: {
-            //   rotation: globalRotation
-            // },
 						width: width,
 						height: height,
 						setProjection: function(element) {
 					    var projection = d3.geoOrthographic()
-					      // .center(globalRotation)
 					      .rotate(globalRotation)
 					      .scale(width / 2 - 20)
 					      .translate([width / 2, height / 2]);
@@ -438,8 +428,8 @@ angular.module('netStatsApp.directives', [])
 							defaultFill: '#282828'
 						},
 						geographyConfig: {
-							borderWidth: 0,
-							borderColor: '#000',
+							borderWidth: 1,
+							borderColor: 'lightgray',
 							highlightOnHover: false,
 							popupOnHover: false
 						},
@@ -451,92 +441,22 @@ angular.module('netStatsApp.directives', [])
 						done: function(datamap) {
 							var ev;
 
-							// var zoomListener = d3.behavior.zoom()
-							// 	.size([width, height])
-							// 	.scaleExtent([1, 3])
-							// 	.on("zoom", redraw)
-							// 	.on("zoomend", animadraw);
-
-							var dragListener = d3.behavior.drag();
-								// .on("dragstart", function() {
-								// 	d3.event.sourceEvent.stopPropagation(); // silence other listeners
-								// 	})
-								// .on('drag', rotate);
-
-							d3.select('#largeMapBody').select('svg')
-							.call(dragListener);
-
-							function redraw() {
-								console.log('redraw');
-								datamap.svg.select(".datamaps-subunits").attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-								datamap.svg.select(".bubbles").selectAll("circle")
-									.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")")
-									.attr("r", 3/d3.event.scale);
-
-								ev = d3.event;
-							}
-
-							// zoomListener(datamap.svg);
-							dragListener.on('drag', rotate);
-								// .on("dragstart", function() {
-								// 	console.log('drag started');
-								// 	d3.event.sourceEvent.stopPropagation(); // silence other listeners
-								// });
-								// .on("dragend", function() {
-								// 	console.log('drag ended');
-								// 	scope.redraw();
-								// });
-
-							function rotate() {
-								var dx = d3.event.dx;
-								var dy = d3.event.dy;
-								console.log('rotated');
-								var rotation = datamap.projection.rotate();
-								var radius = datamap.projection.scale();
-								var scale = d3.scale.linear().domain([-1 * radius, radius]).range([-90, 90]);
-								var degX = scale(dx);
-								var degY = scale(dy);
-								rotation[0] += degX;
-								rotation[1] -= degY;
-								if (rotation[1] > 90) rotation[1] = 90;
-								if (rotation[1] < -90) rotation[1] = -90;
-
-								if (rotation[0] >= 180) rotation[0] -= 360;
-								globalRotation = rotation;
-								console.log('rotation: ', rotation);
-								scope.redraw();
-							}
-
-							function animadraw() {
-								console.log('animadraw');
-								var x = Math.min(0, Math.max(ev.translate[0], (-1) * width * (ev.scale-1)));
-								var y = Math.min(0, Math.max(ev.translate[1], (-1) * height * (ev.scale-1)));
-
-								datamap.svg.select(".datamaps-subunits")
-									.transition()
-									.delay(150)
-									.duration(750)
-									.attr("transform", "translate(" + x  + "," + y + ")scale(" + ev.scale + ")");
-
-								datamap.svg.select(".bubbles").selectAll("circle")
-									.transition()
-									.delay(150)
-									.duration(750)
-									.attr("transform", "translate(" + x  + "," + y + ")scale(" + ev.scale + ")")
-									.attr("r", 3/ev.scale);
-
-								zoomListener.translate([x,y]);
-							}
+							var globe = d3.select('#largeMapBody').select('svg').append('g');
+							globe.selectAll('circle').data([1]).enter()
+									.append('circle')
+										.attr('r', width/2 - 20)
+										.attr('cx', '50%')
+										.attr('cy', '50%')
+										.attr('stroke', 'white')
+										.attr('stroke-width', 1)
+										.attr('fill', 'white')
+										.attr('opacity', 0.25);
 						}
 					});
 
 					scope.map.graticule();
 
 					scope.map.bubbles(scope.data, bubbleConfig);
-
-					scope.links = voronoi.links(scope.data);
-
-					// scope.drawArcs();
 				}
 
 				scope.init();
