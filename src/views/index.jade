@@ -250,11 +250,12 @@ block content
 
     .modal.fade#large-map
       .modal-dialog(style='width: 840px')
-        .modal-content
+        .modal-content(style='background-color: black')
           .modal-header
+            button.close(type='button', aria-label='Close', data-dismiss='modal', style='opacity: 0.5')
+              span(aria-hidden='true', style='color: white') &times;
             h4.modal-title Node Globe
-            button.close(type='button', aria-label='Close', data-dismiss='modal')
-              span(aria-hidden='true') &times;
+            
           .modal-body#largeMapBody(style='min-height: 800px')
           largemap#largeMapHolder(data="map")
             
